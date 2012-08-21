@@ -33,6 +33,10 @@ runcmd:
     cd /root
     tar xzf /root/*.tgz
 
+    # Put app files into place
+    mkdir -p /var/www
+    cp -r /root/src/* /var/www/
+
     # Add upstart job for nodejs and start it
     cp /root/deploy/webtracker.conf /etc/init/
     service webtracker start
