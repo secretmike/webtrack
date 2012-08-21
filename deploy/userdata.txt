@@ -1,0 +1,61 @@
+#cloud-config
+
+password: ubuntu
+chpasswd: { expire: False }
+ssh_pwauth: True
+
+manage_etc_hosts: true
+
+apt_update: true
+apt_upgrade: true
+
+apt_sources:
+ - source: "ppa:chris-lea/node.js"
+ - source: "ppa:chris-lea/npm"
+
+packages:
+ - nodejs
+ - npm
+ - nginx
+
+final_message: "SYSTEM READY, after $UPTIME seconds"
+
+runcmd:
+  - |
+    # Get our data file
+    mkdir -p /cdrom
+    mount /dev/cdrom /cdrom
+    cp /cdrom/*.tgz /root
+    umount /cdrom
+    rm -fr /cdrom
+
+    # Extract contents
+    cd /root
+    tar xzf /root/*.tgz
+
+    # Add upstart job for nodejs and start it
+    cp /root/deploy/webtracker.conf /etc/init/
+    service webtracker start
+
+    # Configure nginx
+    cat > /etc/nginx/sites-available/default << EOF
+    # Written by webtracker cloud-init script
+    upstream app {
+        server 127.0.0.1:8000;
+    }
+    server {
+        listen 0.0.0.0:80;
+        server_name www.yourdomain.com yourdomain.com;
+        access_log /var/log/nginx/yourdomain.log;
+        location / {
+            proxy_set_header X-Real-IP \$remote_addr;
+            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+            proxy_set_header Host \$http_host;
+            proxy_set_header X-NginX-Proxy true;
+            proxy_pass http://app;
+            proxy_redirect off;
+        }
+    }
+    EOF
+    service nginx stop
+    service nginx start
