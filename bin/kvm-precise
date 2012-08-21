@@ -1,0 +1,61 @@
+#!/usr/bin/env python
+
+from qemu_server import QemuServer
+from tempfile import mkdtemp
+
+class TestServer(QemuServer):
+    """
+    Represents a basic machine for running tests.
+    """
+
+    def get_name(self):
+        """Returns the server name"""
+        return "Test"
+
+    def get_hostname(self):
+        """Returns the server hostname"""
+        return "test"
+
+    def get_extra_config(self):
+        """Returns additional arguments to configure the network"""
+        return ["-net", "nic",
+                "-net", "user,hostfwd=tcp::5022-:22,hostfwd=tcp::5080-:80,hostfwd=tcp::5443-:443"]
+
+    def get_userdata(self):
+        """Returns a cloud-config script to configure the new server."""
+        return CLOUD_CONFIG
+
+
+CLOUD_CONFIG = r"""#cloud-config
+manage_etc_hosts: true
+
+final_message: "SYSTEM READY, after $UPTIME seconds"
+
+password: ubuntu
+chpasswd: { expire: False }
+ssh_pwauth: True
+"""
+
+if __name__ == "__main__":
+    import sys
+    from qemu_server import mkdir_p
+    from shutil import rmtree
+
+    release = sys.argv[0].split('/')[-1]
+
+    userdata = None
+    if len(sys.argv) > 1:
+        userdata_file = sys.argv[1]
+        with open(userdata_file, "rb") as f:
+            userdata = f.read()
+
+    data_dir = mkdtemp(prefix="temp_vm.")
+    try:
+        test = TestServer(release=release, data_dir=data_dir, userdata=userdata)
+        test.poweron()
+        test.wait_until_ready()
+        print("ALL SYSTEMS READY")
+        test.wait()
+    finally:
+        rmtree(data_dir)
+
