@@ -21,18 +21,23 @@ class QemuServer(object):
     @param data_dir: The directory to store the VM's data files.
     @param img_cache: The directory to store the pristine OS images so they
         only need to be downloaded once.
+    @param userdata: A userdata blob to provide to the new image. Will be
+        processed by cloud-init.
+    @param extra_file: A path to a file which will be included in the OVF ISO
+        image file.
     """
 
     # The base url to download image files from.
     BASE_CLOUD_IMAGES_URL = "http://cloud-images.ubuntu.com/"
 
     def __init__(self, release="precise", arch="i386", data_dir=None,
-                 img_cache="~/qemu_images", userdata=None):
+                 img_cache="~/qemu_images", userdata=None, extra_file=None):
         self.release = release
         self.arch = arch
         self._data_dir = data_dir
         self._img_cache = os.path.abspath(os.path.expanduser(img_cache))
         self._userdata = userdata
+        self._extra_file = extra_file
         self._root_disk = os.path.join(self._data_dir, "disk.img")
         self._ovf_transport = os.path.join(self._data_dir, "ovf.iso")
         # _ended indictes when the QEMU process has terminated
@@ -202,7 +207,7 @@ class QemuServer(object):
             else:
                 userdata = self.get_userdata()
             _gen_ovf_transport_iso(self._ovf_transport, instance_id, hostname,
-                                   userdata)
+                                   userdata, self._extra_file)
         return self._ovf_transport
 
     def poweron(self):
@@ -358,7 +363,8 @@ def _genisoimage(title, outfile, in_dir):
                    stderr=fnull)
 
 
-def _gen_ovf_transport_iso(outfile, instance_id, hostname, userdata):
+def _gen_ovf_transport_iso(outfile, instance_id, hostname, userdata,
+                           extra_file):
     """
     Generates an OVF transport ISO file used to get instance data into the new
     VM. The ISO file is connected to the new VM as a CD drive which cloud-init
@@ -368,6 +374,7 @@ def _gen_ovf_transport_iso(outfile, instance_id, hostname, userdata):
     @param instance_id: The instance_id of the new VM.
     @param hostname: The hostname of the new VM.
     @param userdata: Userdata to pass to the new VM.
+    @param extra_file: An extra file to include on the ISO image.
     """
     temp_dir = mkdtemp()
     try:
@@ -383,6 +390,9 @@ def _gen_ovf_transport_iso(outfile, instance_id, hostname, userdata):
                                   "seedfrom": "",
                                   "password": "ubuntu"}
             ovf_file.write(ovf)
+        # If specified, copy the extra file to the disk image.
+        if extra_file:
+            shutil.copy(extra_file, temp_dir)
         _genisoimage("OVF-TRANSPORT", outfile, temp_dir)
     finally:
         shutil.rmtree(temp_dir)

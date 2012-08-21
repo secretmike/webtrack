@@ -50,10 +50,16 @@ if __name__ == "__main__":
         with open(userdata_file, "rb") as f:
             userdata = f.read()
 
+    # Read an optional filename to include on the OVF iso.
+    extra_file = None
+    if len(sys.argv) > 2:
+        extra_file = sys.argv[2]
+
     # Make temp directory to keep VM files.
     data_dir = mkdtemp(prefix="temp_vm.")
     try:
-        test = TestServer(release=release, data_dir=data_dir, userdata=userdata)
+        test = TestServer(release=release, data_dir=data_dir,
+                          userdata=userdata, extra_file=extra_file)
         test.poweron()
         test.wait_until_ready()
         print("ALL SYSTEMS READY")
