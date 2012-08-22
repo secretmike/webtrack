@@ -37,6 +37,10 @@ runcmd:
     mkdir -p /var/www
     cp -r /root/src/* /var/www/
 
+    # Download nodejs dependencies using npm
+    cd /var/www
+    npm install
+
     # Add upstart job for nodejs and start it
     cp /root/deploy/webtracker.conf /etc/init/
     service webtracker start
