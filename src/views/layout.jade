@@ -11,6 +11,14 @@ html
         a(href='/logout') Logout
       else
         a(href='/login') Login
+    if flash.error
+      for error in flash.error
+        .flash_error
+          p ERROR: #{error}
+    if flash.success
+      for success in flash.success
+        .flash_success
+          p SUCCESS: #{success}
     block content
     block pagefooter
       p (c) Copyright Michael Milner 2012

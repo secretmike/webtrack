@@ -1,6 +1,7 @@
 var express = require('express');
 var passport = require('passport');
 var PassportLocalStrategy = require('passport-local').Strategy;
+var flash = require('connect-flash')
 //var io = require('socket.io');
 
 
@@ -85,6 +86,7 @@ app.use(express.bodyParser());
 app.use(express.session({secret: "BadWolf"}));
 app.use(passport.initialize());
 app.use(passport.session());
+app.use(flash());
 app.use(app.router);
 app.use(express.static(__dirname + '/public'));
 
@@ -92,23 +94,28 @@ app.use(express.static(__dirname + '/public'));
 // Set up routes
 // Index page
 app.get('/', function(req, res) {
-    res.render('index', {user: req.user});
+    res.render('index', {user: req.user,
+                         flash: req.flash()});
 });
 
 
 // Account Page
 app.get('/account', ensureAuthenticated, function(req, res){
-    res.render('account', {user: req.user});
+    res.render('account', {user: req.user,
+                           flash: req.flash()});
 });
 
 
 // Login/Logout pages
 app.get('/login', function(req, res){
-    res.render('login', {user: req.user, message: "flash"});//req.flash('error')});
+    res.render('login', {user: req.user,
+                         flash: req.flash()});
 });
 
 app.post('/login', 
-    passport.authenticate('local', { failureRedirect: '/login', failureFlash: false }),
+    passport.authenticate('local', {failureRedirect: '/login',
+                                    failureFlash: true,
+                                    successFlash: "Login Successful"}),
     function(req, res) {
         res.redirect('/');
     });
