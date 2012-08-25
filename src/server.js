@@ -1,6 +1,7 @@
 var express = require('express');
 var passport = require('passport');
 var PassportLocalStrategy = require('passport-local').Strategy;
+var RedisSessionStore = require('connect-redis')(express);
 var flash = require('connect-flash')
 //var io = require('socket.io');
 
@@ -83,7 +84,8 @@ app.use(express.logger());
 app.use(express.favicon());
 app.use(express.cookieParser());
 app.use(express.bodyParser());
-app.use(express.session({secret: "BadWolf"}));
+app.use(express.session({store: new RedisSessionStore({ttl: 60 * 30}),
+                         secret: "BadWolf"}));
 app.use(passport.initialize());
 app.use(passport.session());
 app.use(flash());

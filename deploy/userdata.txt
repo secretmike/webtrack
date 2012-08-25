@@ -18,6 +18,7 @@ packages:
  - npm
  - nginx
  - build-essential
+ - redis-server
 
 final_message: "SYSTEM READY, after $UPTIME seconds"
 
