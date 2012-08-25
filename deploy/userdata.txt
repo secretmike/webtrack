@@ -69,3 +69,7 @@ runcmd:
     EOF
     service nginx stop
     service nginx start
+
+    # Add a sample user to redis
+    redis-cli hmset user:mike username mike password password email mike@example.com
+

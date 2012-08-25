@@ -1,4 +1,5 @@
 var express = require('express');
+var redis = require('redis');
 var passport = require('passport');
 var PassportLocalStrategy = require('passport-local').Strategy;
 var RedisSessionStore = require('connect-redis')(express);
@@ -6,61 +7,62 @@ var flash = require('connect-flash')
 //var io = require('socket.io');
 
 
+// Connect to redis
+var redis_client = redis.createClient();
 
-var users = [
-    {id: 1, username: 'mike', password: 'password', email: 'mike@example.com'},
-    {id: 2, username: 'joe', password: 'password', email: 'joe@example.com'}
-];
-
-function findById(id, done){
-    var idx = id - 1;
-    if (users[idx]) {
-        done(null, users[idx]);
-    }
-    else {
-        done(new Error('User ' + id + ' does not exist'));
-    }
-}
-
+// Loads a user record from redis
 function findByUsername(username, done){
-    for (var i = 0, len = users.length; i < len; i++) {
-        var user = users[i];
-        if (user.username === username) {
-            return done(null, user);
+    var key = 'user:' + username;
+    redis_client.hgetall(key, function(err, obj){
+        if (err){
+            done(err);
         }
-    }
-    return done(null, null);
+        if (!obj){
+            done(null, false, {message: "Unknown user"});
+        }
+        else {
+            done(null, obj);
+        }
+    });
 }
 
-
+// Serialize a user into something that can be stored in a session
+// In this case we load the user from redis so we only need to keep
+// the username as a unique key
 passport.serializeUser(function(user, done){
-    done(null, user.id);
+    done(null, user.username);
 });
 
-passport.deserializeUser(function(id, done) {
-    findById(id, function(err, user){
+// Deserialize a user based on the username. In this case we're storing
+// the user in redis so we just load the user based on the username.
+passport.deserializeUser(function(username, done) {
+    findByUsername(username, function(err, user){
+        // Copy the username into the id field to keep passport happy.
+        user.id = user.username;
         done(err, user);
     });
 });
 
-
-
-
-
+// Configure the passport strategy authenticate based on locally
+// stored user records.
 passport.use(new PassportLocalStrategy(function(username, password, done) {
-    // asynchronous verification, for effect...
-    process.nextTick(function(){
-        // Find the user by username.  If there is no user with the given
-        // username, or the password is not correct, set the user to `false` to
-        // indicate failure and set a flash message.  Otherwise, return the
-        // authenticated `user`.
-        findByUsername(username, function(err, user){
-            if (err){ return done(err); }
-            if (!user){ return done(null, false, {message: 'Unknown user ' + username}); }
-            if (user.password != password){ return done(null, false, { message: 'Invalid password' }); }
-            return done(null, user);
-        })
-    });
+    // Find the user by username.  If there is no user with the given
+    // username, or the password is not correct, set the user to `false` to
+    // indicate failure and set a flash message.  Otherwise, return the
+    // authenticated `user`.
+    findByUsername(username, function(err, user){
+        if (err){
+            return done(err);
+        }
+        if (!user){
+            return done(null, false, {message: 'Unknown user ' + username});
+        }
+        if (user.password != password){
+            return done(null, false, { message: 'Invalid password' });
+        }
+        // Success
+        return done(null, user);
+    })
 }));
 
 
@@ -71,12 +73,10 @@ function ensureAuthenticated(req, res, next) {
 }
 
 
-var app = express();
-
 // Configure app
+var app = express();
 app.set('views', __dirname + '/views');
 app.set('view engine', 'jade');
-//app.set('view options', {layout: true});
 
 // Set up middleware
 app.use(express.responseTime());

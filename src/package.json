@@ -4,6 +4,7 @@
   "version": "0.0.1",
   "private": true,
   "dependencies": {
+    "redis": "0.7.x",
     "express": "3.x",
     "connect-flash": "0.1.x",
     "connect-redis": "1.4.x",
