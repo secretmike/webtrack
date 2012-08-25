@@ -17,6 +17,7 @@ packages:
  - nodejs
  - npm
  - nginx
+ - build-essential
 
 final_message: "SYSTEM READY, after $UPTIME seconds"
 
