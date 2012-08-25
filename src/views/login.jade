@@ -1,0 +1,11 @@
+extends layout
+
+block content
+  h2 Log in here:
+    form(name='login', method='POST')
+      label Username:
+        input(name='username', type='text')
+      label Password:
+        input(name='password', type='password')
+      label Submit:
+        input(name='submit', type='submit', value='Login')

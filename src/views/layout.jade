@@ -1,0 +1,16 @@
+html
+  head
+    title WebTrack
+  body
+    block pageheader
+      a(href='/') Home
+      &nbsp;-&nbsp;
+      if user
+        a(href='/account') Account
+        &nbsp;-&nbsp;
+        a(href='/logout') Logout
+      else
+        a(href='/login') Login
+    block content
+    block pagefooter
+      p (c) Copyright Michael Milner 2012
