@@ -33,6 +33,7 @@ function findByUsername(username, done){
 function getAllTracks(done){
     // Load a sorted list of tracks from redis
     redis_client.sort("tracks", function(err, track_names){
+        console.log(err, track_names);
         if(err){
             return done(err);
         }
@@ -45,6 +46,7 @@ function getAllTracks(done){
                 });
             },
             function(err, tracks){
+                console.log(err, tracks);
                 if(err){
                     return done(err);
                 }
@@ -54,6 +56,7 @@ function getAllTracks(done){
                         filter_cb(track !== null);
                     },
                     function(tracks){
+                        console.log(tracks);
                         done(null, tracks);
                     });
             });
@@ -191,15 +194,15 @@ app.get('/', function(req, res) {
             }
             else{
                 res.render('index', {user: req.user,
-                                     flash: req.flash(),
-                                     tracks: tracks});
+                                     tracks: tracks,
+                                     flash: req.flash()});
             }
         });
     }
     else {
         res.render('index', {user: req.user,
-                             flash: req.flash(),
-                             tracks: tracks});
+                             tracks: tracks,
+                             flash: req.flash()});
     }
 });
 

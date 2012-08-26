@@ -5,12 +5,14 @@ block content
   p ID #{track.id}
   p Name: #{track.name}
   p Creator: #{track.created_by}
-  h4 Points:
-  ul
-    for point in track.points
-      li
-        p Timestamp: #{point.timestamp}
-        p Lat: #{point.lat}
-        p Lon: #{point.lon}
-        p Creator: #{point.created_by}
+  if track.points
+    if track.points.length > 0
+      h4 Points:
+      ul
+        for point in track.points
+          li
+            p Timestamp: #{point.timestamp}
+            p Lat: #{point.lat}
+            p Lon: #{point.lon}
+            p Creator: #{point.created_by}
         

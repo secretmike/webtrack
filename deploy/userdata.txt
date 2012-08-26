@@ -42,7 +42,10 @@ runcmd:
 
     # Download nodejs dependencies using npm
     cd /var/www
-    npm install
+    #npm install
+    # Hack to install modules one by one. Seems to prevernt npm install
+    # from locking up.
+    cat package.json | sed -nr "s/    \"([^\"]+)\".*/\1/p" | xargs -n1 npm install
 
     # Add upstart job for nodejs and start it
     cp /root/deploy/webtracker.conf /etc/init/
@@ -80,3 +83,6 @@ runcmd:
     HASH=`python -c "import bcrypt; print(bcrypt.hashpw('$PASSWORD', bcrypt.gensalt(12)))"`
     redis-cli hmset user:joe username joe passhash $HASH email joe@example.com
 
+    # Add sample track to redis
+    redis-cli sadd tracks track:1
+    redis-cli hmset track:1 id 1 name Track1 created_by mike
