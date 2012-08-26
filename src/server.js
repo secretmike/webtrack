@@ -1,3 +1,4 @@
+var async = require('async');
 var express = require('express');
 var redis = require('redis');
 var passport = require('passport');
@@ -18,11 +19,88 @@ function findByUsername(username, done){
         if (err){
             done(err);
         }
-        if (!obj){
+        else if (!obj){
             done(null, false, {message: "Unknown user"});
         }
         else {
             done(null, obj);
+        }
+    });
+}
+
+
+// Load all track objects from redis
+function getAllTracks(done){
+    // Load a sorted list of tracks from redis
+    redis_client.sort("tracks", function(err, track_names){
+        if(err){
+            return done(err);
+        }
+        // For each track name, load the whole object from redis
+        async.map(track_names,
+            function(track_name, map_cb){
+                redis_client.hgetall(track_name, function(err, track){
+                    console.log(err, track);
+                    map_cb(err, track);
+                });
+            },
+            function(err, tracks){
+                if(err){
+                    return done(err);
+                }
+                // Remove any null tracks
+                async.filter(tracks,
+                    function(track, filter_cb){
+                        filter_cb(track !== null);
+                    },
+                    function(tracks){
+                        done(null, tracks);
+                    });
+            });
+    });
+}
+
+// Load a single track from redis
+function getTrackById(id, done){
+    var key = "track:" + id;
+    var point_key = key + ":points";
+    redis_client.hgetall(key, function(err, track){
+        console.log(err, track);
+        if(err){
+            done(err);
+        }
+        else {
+            // Load all points for this track
+            redis_client.lrange(point_key, 0, -1, function(err, points){
+                console.log(err, points);
+                if(err){
+                    done(err);
+                }
+                else{
+                    // JSON decode each point
+                    async.map(points,
+                        function(point, map_cb){
+                            console.log(point);
+                            try{
+                                point = JSON.parse(point);
+                                map_cb(null, point);
+                            }
+                            catch(e){
+                                map_cb(e);
+                            }
+                        },
+                        function(err, points){
+                            console.log(err, points);
+                            if(err){
+                                done(err);
+                            }
+                            else{
+                                track.points = points
+                                done(null, track);
+                            }
+                        });
+                }
+            });
         }
     });
 }
@@ -105,15 +183,24 @@ app.use(express.static(__dirname + '/public'));
 // Set up routes
 // Index page
 app.get('/', function(req, res) {
-    res.render('index', {user: req.user,
-                         flash: req.flash()});
-});
-
-
-// Account Page
-app.get('/account', ensureAuthenticated, function(req, res){
-    res.render('account', {user: req.user,
-                           flash: req.flash()});
+    var tracks = [];
+    if(req.user){
+        getAllTracks(function(err, tracks){
+            if(err){
+                res.send(500, err);
+            }
+            else{
+                res.render('index', {user: req.user,
+                                     flash: req.flash(),
+                                     tracks: tracks});
+            }
+        });
+    }
+    else {
+        res.render('index', {user: req.user,
+                             flash: req.flash(),
+                             tracks: tracks});
+    }
 });
 
 
@@ -134,6 +221,35 @@ app.post('/login',
 app.get('/logout', function(req, res){
     req.logout();
     res.redirect('/');
+});
+
+
+// Account Page
+app.get('/account', ensureAuthenticated, function(req, res){
+    res.render('account', {user: req.user,
+                           flash: req.flash()});
+});
+
+
+// Track pages
+app.all('/tracks/*', ensureAuthenticated);
+
+app.get('/tracks/:id', function(req, res){
+    getTrackById(req.params.id, function(err, track){
+        console.log(err, track);
+        if(err){
+            res.send(500, err);
+        }
+        else if(!track){
+            res.send(404, "Not Found");
+        }
+        else{
+            console.log(track);
+            res.render('track', {user: req.user,
+                                 track: track,
+                                 flash: req.flash()});
+        }
+    });
 });
 
 
