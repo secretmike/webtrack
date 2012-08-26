@@ -2,12 +2,15 @@ extends layout
 
 block content
   h1 Welcome!
-  if tracks.length == 0
-    h4 No tracks available
+  if !user
+    h4 Login to see tracks
   else
-    h4 Choose a track to view:
-    ul
-      for track in tracks
-        li
-          a(href='/tracks/#{track.id}') #{track.name}
+    if tracks.length == 0
+      h4 No tracks available
+    else
+      h4 Choose a track to view:
+      ul
+        for track in tracks
+          li
+            a(href='/tracks/#{track.id}') #{track.name}
       
