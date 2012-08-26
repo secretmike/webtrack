@@ -19,6 +19,7 @@ packages:
  - nginx
  - build-essential
  - redis-server
+ - python-bcrypt
 
 final_message: "SYSTEM READY, after $UPTIME seconds"
 
@@ -70,6 +71,12 @@ runcmd:
     service nginx stop
     service nginx start
 
-    # Add a sample user to redis
-    redis-cli hmset user:mike username mike password password email mike@example.com
+    # Add a sample users to redis. Bcrypt the passwords.
+    PASSWORD="password"
+    # mike
+    HASH=`python -c "import bcrypt; print(bcrypt.hashpw('$PASSWORD', bcrypt.gensalt(12)))"`
+    redis-cli hmset user:mike username mike passhash $HASH email mike@example.com
+    # joe
+    HASH=`python -c "import bcrypt; print(bcrypt.hashpw('$PASSWORD', bcrypt.gensalt(12)))"`
+    redis-cli hmset user:joe username joe passhash $HASH email joe@example.com
 

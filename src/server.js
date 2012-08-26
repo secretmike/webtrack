@@ -2,6 +2,7 @@ var express = require('express');
 var redis = require('redis');
 var passport = require('passport');
 var PassportLocalStrategy = require('passport-local').Strategy;
+var bcrypt = require('bcrypt');
 var RedisSessionStore = require('connect-redis')(express);
 var flash = require('connect-flash')
 //var io = require('socket.io');
@@ -43,7 +44,7 @@ passport.deserializeUser(function(username, done) {
     });
 });
 
-// Configure the passport strategy authenticate based on locally
+// Configure the passport strategy to authenticate based on locally
 // stored user records.
 passport.use(new PassportLocalStrategy(function(username, password, done) {
     // Find the user by username.  If there is no user with the given
@@ -57,19 +58,27 @@ passport.use(new PassportLocalStrategy(function(username, password, done) {
         if (!user){
             return done(null, false, {message: 'Unknown user ' + username});
         }
-        if (user.password != password){
-            return done(null, false, { message: 'Invalid password' });
-        }
-        // Success
-        return done(null, user);
-    })
+
+        bcrypt.compare(password, user.passhash, function(err, res) {
+            if (res) {
+                //success
+                return done(null, user);
+            }
+            else {
+                //failure
+                return done(null, false, {message: 'Invalid password'});
+            }
+        });
+    });
 }));
 
 
 // Simple route middleware to ensure user is authenticated.
-function ensureAuthenticated(req, res, next) {
-  if (req.isAuthenticated()) { return next(); }
-  res.redirect('/login');
+function ensureAuthenticated(req, res, next){
+    if (req.isAuthenticated()){
+        return next();
+    }
+    res.redirect('/login');
 }
 
 
