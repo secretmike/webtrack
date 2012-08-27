@@ -10,8 +10,7 @@ apt_update: true
 apt_upgrade: true
 
 apt_sources:
- - source: "ppa:chris-lea/node.js"
- - source: "ppa:chris-lea/npm"
+ - source: "ppa:richarvey/nodejs"
 
 packages:
  - nodejs
