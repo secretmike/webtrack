@@ -1,4 +1,5 @@
 var async = require('async');
+var http = require('http');
 var express = require('express');
 var redis = require('redis');
 var passport = require('passport');
@@ -6,7 +7,7 @@ var PassportLocalStrategy = require('passport-local').Strategy;
 var bcrypt = require('bcrypt');
 var RedisSessionStore = require('connect-redis')(express);
 var flash = require('connect-flash')
-//var io = require('socket.io');
+var socketio = require('socket.io');
 
 
 // Connect to redis
@@ -33,7 +34,7 @@ function findByUsername(username, done){
 function getAllTracks(done){
     // Load a sorted list of tracks from redis
     redis_client.sort("tracks", function(err, track_names){
-        console.log(err, track_names);
+        console.log("getAllTracks SORT: " + err + "," + track_names);
         if(err){
             return done(err);
         }
@@ -41,12 +42,12 @@ function getAllTracks(done){
         async.map(track_names,
             function(track_name, map_cb){
                 redis_client.hgetall(track_name, function(err, track){
-                    console.log(err, track);
+                    console.log("getAllTracks HGETALL: " + err + "," + track);
                     map_cb(err, track);
                 });
             },
             function(err, tracks){
-                console.log(err, tracks);
+                console.log("getAllTracks: " + err + "," + tracks);
                 if(err){
                     return done(err);
                 }
@@ -56,7 +57,7 @@ function getAllTracks(done){
                         filter_cb(track !== null);
                     },
                     function(tracks){
-                        console.log(tracks);
+                        console.log("getAllTracks:" + tracks);
                         done(null, tracks);
                     });
             });
@@ -68,14 +69,14 @@ function getTrackById(id, done){
     var key = "track:" + id;
     var point_key = key + ":points";
     redis_client.hgetall(key, function(err, track){
-        console.log(err, track);
+        console.log("getTrackById: HGETALL: " + err + "," + track);
         if(err){
             done(err);
         }
         else {
             // Load all points for this track
             redis_client.lrange(point_key, 0, -1, function(err, points){
-                console.log(err, points);
+                console.log("getTrackById LRANGE: " + err + "," + points);
                 if(err){
                     done(err);
                 }
@@ -83,7 +84,7 @@ function getTrackById(id, done){
                     // JSON decode each point
                     async.map(points,
                         function(point, map_cb){
-                            console.log(point);
+                            console.log("getTrackById json: " + point);
                             try{
                                 point = JSON.parse(point);
                                 map_cb(null, point);
@@ -93,12 +94,14 @@ function getTrackById(id, done){
                             }
                         },
                         function(err, points){
-                            console.log(err, points);
+                            console.log("getTrackById: " + err + "," + points);
                             if(err){
                                 done(err);
                             }
                             else{
-                                track.points = points
+                                if(track){
+                                    track.points = points;
+                                }
                                 done(null, track);
                             }
                         });
@@ -182,6 +185,31 @@ app.use(flash());
 app.use(app.router);
 app.use(express.static(__dirname + '/public'));
 
+// Start listening
+var server = app.listen(8000);
+console.log('Server listening at http://127.0.0.1:8000/');
+
+// Connect socket.io
+io = socketio.listen(server);
+io.set('log level', 2);
+
+io.sockets.on('connection', function (socket) {
+    console.log("SocketIO Connection");
+    socket.on('new point', function (data) {
+        console.log("New Point: " + data);
+    });
+    socket.on('watch track', function(data) {
+        console.log("Watch Track: " + data.trackid);
+        var track = "track:" + data.trackid;
+        socket.join(track);
+        socket.broadcast.to(track).emit('new point', {lat: 45.1, lon:45.2});
+    });
+});
+
+
+
+
+
 
 // Set up routes
 // Index page
@@ -247,7 +275,7 @@ app.get('/tracks/:id', function(req, res){
             res.send(404, "Not Found");
         }
         else{
-            console.log(track);
+            console.log("Track: " + track);
             res.render('track', {user: req.user,
                                  track: track,
                                  flash: req.flash()});
@@ -256,6 +284,3 @@ app.get('/tracks/:id', function(req, res){
 });
 
 
-// Start listening
-app.listen(8000);
-console.log('Server listening at http://127.0.0.1:8000/');

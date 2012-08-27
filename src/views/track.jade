@@ -1,18 +1,57 @@
 extend layout
 
+block scripts
+  script(src='/jquery-1.8.0.min.js')
+  script(src='/OpenLayers.js')
+  script(src='/socket.io/socket.io.js')
+  script
+    $(document).ready(function(){
+        console.log("Document Ready");
+        var socket = io.connect();
+        socket.on('connect', function(data){
+            console.log("Socket.io Connected");
+            socket.emit('watch track', { trackid: #{track.id} });
+        });
+        socket.on('new point', function(data){
+            console.log("New Point: " + data);
+        });
+
+
+        var urls = [
+            "http://a.tile.openstreetmap.org/${z}/${x}/${y}.png",
+            "http://b.tile.openstreetmap.org/${z}/${x}/${y}.png",
+            "http://c.tile.openstreetmap.org/${z}/${x}/${y}.png"
+        ];
+        var map = new OpenLayers.Map({
+            div: "map",
+            layers: [
+                new OpenLayers.Layer.XYZ("OSM", urls, {
+                    transitionEffect: "resize", buffer: 2, sphericalMercator: true,
+                    attribution: "Data CC-By-SA by <a href='http://openstreetmap.org/'>OpenStreetMap</a>"
+                })
+            ],
+            controls: [
+                new OpenLayers.Control.Navigation({
+                    dragPanOptions: {
+                        enableKinetic: true
+                    }
+                }),
+                new OpenLayers.Control.PanZoom(),
+                new OpenLayers.Control.Attribution()
+            ],
+            center: [0, 0],
+            zoom: 3
+        });
+        map.addControl(new OpenLayers.Control.LayerSwitcher());
+
+        var position       = new OpenLayers.LonLat(13.41,52.52).transform( fromProjection, toProjection);
+        var zoom           = 15; 
+
+        map.setCenter(position, zoom );
+    });
+
 block content
-  h3 Track
-  p ID #{track.id}
-  p Name: #{track.name}
-  p Creator: #{track.created_by}
-  if track.points
-    if track.points.length > 0
-      h4 Points:
-      ul
-        for point in track.points
-          li
-            p Timestamp: #{point.timestamp}
-            p Lat: #{point.lat}
-            p Lon: #{point.lon}
-            p Creator: #{point.created_by}
+  #maphead
+    p #{track.name} - Created By: #{track.created_by}
+  #map
         
