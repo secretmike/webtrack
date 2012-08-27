@@ -196,13 +196,14 @@ io.set('log level', 2);
 io.sockets.on('connection', function (socket) {
     console.log("SocketIO Connection");
     socket.on('new point', function (data) {
-        console.log("New Point: " + data);
+        console.log("New Point: " + data.trackid + ", Lon: " + data.lon + ", Lat: " + data.lat);
+        var track = "track:" + data.trackid;
+        socket.broadcast.to(track).emit('new point', {lon: data.lon, lat: data.lat});
     });
     socket.on('watch track', function(data) {
         console.log("Watch Track: " + data.trackid);
         var track = "track:" + data.trackid;
         socket.join(track);
-        socket.broadcast.to(track).emit('new point', {lat: 45.1, lon:45.2});
     });
 });
 

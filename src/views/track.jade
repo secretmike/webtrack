@@ -14,6 +14,7 @@ block scripts
         });
         socket.on('new point', function(data){
             console.log("New Point: " + data);
+            addMarker(data.lon, data.lat);
         });
 
 
@@ -44,10 +45,28 @@ block scripts
         });
         map.addControl(new OpenLayers.Control.LayerSwitcher());
 
-        var position       = new OpenLayers.LonLat(13.41,52.52).transform( fromProjection, toProjection);
-        var zoom           = 15; 
+        var latlonProj     = new OpenLayers.Projection("EPSG:4326");   // Transform from WGS 1984
+        var MercatorProj   = new OpenLayers.Projection("EPSG:900913"); // to Spherical Mercator Projection
+        var position       = new OpenLayers.LonLat(-63.5744, 44.6479).transform(latlonProj, MercatorProj);
+        var zoom           = 15;
+        map.setCenter(position, zoom);
 
-        map.setCenter(position, zoom );
+
+        var markers = new OpenLayers.Layer.Markers("Markers");
+        map.addLayer(markers);
+
+        function addMarker(lon, lat){
+            var pos = new OpenLayers.LonLat(lon, lat).transform(latlonProj, MercatorProj);
+            markers.addMarker(new OpenLayers.Marker(pos));
+        }
+
+
+        map.events.register("click", map, function(e) {
+            var position = map.getLonLatFromPixel(e.xy).transform(MercatorProj, latlonProj);
+            socket.emit('new point', { trackid: #{track.id}, lon: position.lon, lat: position.lat });
+            addMarker(position.lon, position.lat);
+        });
+
     });
 
 block content
